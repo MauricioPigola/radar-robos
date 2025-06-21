@@ -3,11 +3,23 @@ import streamlit as st
 import pandas as pd
 import datetime
 import os
-from streamlit_javascript import st_javascript
 
 st.set_page_config(page_title="Mapa de iPhones robados", layout="wide")
 
 st.title("📍 Mapa colaborativo de iPhones robados")
+
+st.subheader("🔓 Compartir mi ubicación actual (modo 'móvil robado')")
+
+st.markdown("""
+Para obtener tu ubicación automáticamente desde tu móvil, haz clic en el siguiente botón y copia tus coordenadas:
+
+👉 [Obtener mi ubicación actual](https://www.google.com/maps) 
+
+Una vez abierta la app de Google Maps:
+1. Toca el punto azul que representa tu ubicación.
+2. Copia la latitud y longitud.
+3. Pega los valores en el formulario manualmente aquí abajo.
+""")
 
 # Cargar base de datos
 DB_PATH = "database.csv"
@@ -16,50 +28,6 @@ if not os.path.exists(DB_PATH):
         f.write("modelo,imei,latitud,longitud,fecha,hora,comentarios\n")
 
 df = pd.read_csv(DB_PATH)
-
-# GEOLOCALIZACIÓN
-st.subheader("🔓 Compartir mi ubicación actual (modo 'móvil robado')")
-
-if "coords" not in st.session_state:
-    st.session_state.coords = None
-
-if st.button("📡 Obtener mi ubicación"):
-    st.session_state.coords = st_javascript("""
-        new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    resolve({latitude: position.coords.latitude, longitude: position.coords.longitude});
-                },
-                (err) => {
-                    resolve({error: err.message});
-                }
-            );
-        });
-    """)
-
-coords = st.session_state.coords
-
-if coords and "latitude" in coords:
-    st.success(f"Ubicación detectada: {coords['latitude']}, {coords['longitude']}")
-
-    if st.button("📍 Enviar esta ubicación al mapa"):
-        nuevo_reporte = pd.DataFrame([{
-            "modelo": "Seguimiento en tiempo real",
-            "imei": "",
-            "latitud": coords['latitude'],
-            "longitud": coords['longitude'],
-            "fecha": datetime.datetime.now().date(),
-            "hora": datetime.datetime.now().time(),
-            "comentarios": "Ubicación enviada en tiempo real"
-        }])
-        nuevo_reporte.to_csv(DB_PATH, mode="a", header=False, index=False)
-        st.success("Ubicación enviada correctamente.")
-        st.rerun()
-
-elif coords and "error" in coords:
-    st.warning(f"Error al obtener ubicación: {coords['error']}")
-else:
-    st.info("Esperando autorización de geolocalización...")
 
 # Mostrar mapa
 st.subheader("🗺️ Mapa de reportes")
