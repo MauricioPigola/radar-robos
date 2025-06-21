@@ -8,29 +8,40 @@ from streamlit_javascript import st_javascript
 st.set_page_config(page_title="Mapa de iPhones robados", layout="wide")
 
 st.title("📍 Mapa colaborativo de iPhones robados")
+
+# Cargar base de datos
+DB_PATH = "database.csv"
+if not os.path.exists(DB_PATH):
+    with open(DB_PATH, "w") as f:
+        f.write("modelo,imei,latitud,longitud,fecha,hora,comentarios\n")
+
+df = pd.read_csv(DB_PATH)
+
+# GEOLOCALIZACIÓN
 st.subheader("🔓 Compartir mi ubicación actual (modo 'móvil robado')")
 
-# Solicitar ubicación
-coords = st_javascript("""
-new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            resolve({latitude: position.coords.latitude, longitude: position.coords.longitude});
-        },
-        (err) => {
-            resolve({error: err.message});
-        }
-    );
-});
-""")
+if "coords" not in st.session_state:
+    st.session_state.coords = None
 
-# Feedback claro según resultado de geolocalización
-if coords is None:
-    st.info("Solicitando acceso a la ubicación...")
-elif "error" in coords:
-    st.warning(f"Error al obtener ubicación: {coords['error']}")
-elif "latitude" in coords:
+if st.button("📡 Obtener mi ubicación"):
+    st.session_state.coords = st_javascript("""
+        new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    resolve({latitude: position.coords.latitude, longitude: position.coords.longitude});
+                },
+                (err) => {
+                    resolve({error: err.message});
+                }
+            );
+        });
+    """)
+
+coords = st.session_state.coords
+
+if coords and "latitude" in coords:
     st.success(f"Ubicación detectada: {coords['latitude']}, {coords['longitude']}")
+
     if st.button("📍 Enviar esta ubicación al mapa"):
         nuevo_reporte = pd.DataFrame([{
             "modelo": "Seguimiento en tiempo real",
@@ -41,20 +52,14 @@ elif "latitude" in coords:
             "hora": datetime.datetime.now().time(),
             "comentarios": "Ubicación enviada en tiempo real"
         }])
-        nuevo_reporte.to_csv("database.csv", mode="a", header=False, index=False)
+        nuevo_reporte.to_csv(DB_PATH, mode="a", header=False, index=False)
         st.success("Ubicación enviada correctamente.")
         st.rerun()
 
-# Debug opcional (mostrar contenido crudo de coords)
-st.write("DEBUG: ", coords)
-
-# Cargar base de datos
-DB_PATH = "database.csv"
-if not os.path.exists(DB_PATH):
-    with open(DB_PATH, "w") as f:
-        f.write("modelo,imei,latitud,longitud,fecha,hora,comentarios\n")
-
-df = pd.read_csv(DB_PATH)
+elif coords and "error" in coords:
+    st.warning(f"Error al obtener ubicación: {coords['error']}")
+else:
+    st.info("Esperando autorización de geolocalización...")
 
 # Mostrar mapa
 st.subheader("🗺️ Mapa de reportes")
@@ -65,6 +70,7 @@ else:
 
 # Formulario
 st.subheader("📝 Reportar un móvil robado")
+
 with st.form("form_reporte"):
     col1, col2 = st.columns(2)
     with col1:
