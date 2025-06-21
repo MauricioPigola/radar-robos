@@ -10,22 +10,24 @@ st.title("📍 Mapa colaborativo de iPhones robados")
 
 st.subheader("🔓 Compartir mi ubicación actual (modo 'móvil robado')")
 
-coords = st_javascript("""
-new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            resolve({latitude: position.coords.latitude, longitude: position.coords.longitude});
-        },
-        (err) => {
-            resolve({error: err.message});
-        }
-    );
-});
-""")
+coords = None
+if st.button("📡 Obtener mi ubicación"):
+    coords = st_javascript("""
+    new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                resolve({latitude: position.coords.latitude, longitude: position.coords.longitude});
+            },
+            (err) => {
+                resolve({error: err.message});
+            }
+        );
+    });
+    """)
 
 if coords and "latitude" in coords:
     st.success(f"Ubicación detectada: {coords['latitude']}, {coords['longitude']}")
-    
+
     if st.button("📍 Enviar esta ubicación al mapa"):
         nuevo_reporte = pd.DataFrame([{
             "modelo": "Seguimiento en tiempo real",
@@ -36,7 +38,7 @@ if coords and "latitude" in coords:
             "hora": datetime.datetime.now().time(),
             "comentarios": "Ubicación enviada en tiempo real"
         }])
-        nuevo_reporte.to_csv(DB_PATH, mode="a", header=False, index=False)
+        nuevo_reporte.to_csv("database.csv", mode="a", header=False, index=False)
         st.success("Ubicación enviada correctamente.")
         st.rerun()
 
